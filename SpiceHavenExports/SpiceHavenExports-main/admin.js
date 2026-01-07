@@ -5,7 +5,14 @@
 // In a real-world production app, these should be stored in environment variables
 // and loaded securely, but for this admin panel, this is a simpler starting point.
 const SUPABASE_URL = 'https://kwrteqlhcikruoqxdnwd.supabase.co/'; 
-const SUPABASE_ANON_KEY = 'sb_secret_KojZyUjjt4W-0rmoG2z-wg_QAzi-SBI';
+const SUPABASE_ANON_KEY = '';
+
+// --- SANITY CHECK ---
+if (SUPABASE_URL.includes('YOUR_SUPABASE_URL') || SUPABASE_ANON_KEY === '') {
+    const warning = "Supabase credentials are not set in admin.js. Please replace the placeholder values.";
+    alert(warning);
+    throw new Error(warning);
+}
 
 // --- ELEMENT SELECTORS ---
 const loginSection = document.getElementById('login-section');
@@ -130,20 +137,46 @@ async function fetchAndDisplayProducts() {
 addProductForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     addProductMessage.textContent = 'Adding product...';
+    addProductMessage.style.color = 'var(--text-light)';
 
-    // This is a placeholder. We will implement the protected 'add-product' function next.
-    setTimeout(() => {
-         addProductMessage.textContent = 'Placeholder: Product added! (Backend not yet implemented)';
-         addProductForm.reset();
-         // In a real scenario, we would re-fetch the product list here.
-    }, 1000);
+    const { data: { session }, error: sessionError } = await dbClient.auth.getSession();
+    if (sessionError || !session) {
+        addProductMessage.textContent = 'Authentication error. Please log in again.';
+        addProductMessage.style.color = 'red';
+        return;
+    }
 
-    // TODO:
-    // 1. Get user's auth token from dbClient.auth.getSession()
-    // 2. Call a new '/.netlify/functions/add-product' endpoint with a POST request.
-    // 3. Include the auth token in the 'Authorization' header.
-    // 4. Include product data in the body.
-    // 5. Refresh the product list on success.
+    const token = session.access_token;
+    const newProduct = {
+        name: document.getElementById('product-name').value,
+        description: document.getElementById('product-description').value,
+        image_url: document.getElementById('product-image-url').value,
+    };
+
+    try {
+        const response = await fetch('/.netlify/functions/add-product', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(newProduct),
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error || 'Failed to add product.');
+        }
+
+        addProductMessage.textContent = 'Product added successfully!';
+        addProductMessage.style.color = 'var(--deep-green)';
+        addProductForm.reset();
+        await fetchAndDisplayProducts(); // Refresh the list
+
+    } catch (error) {
+        addProductMessage.textContent = `Error: ${error.message}`;
+        addProductMessage.style.color = 'red';
+    }
 });
 
 /**
@@ -154,13 +187,35 @@ existingProductsList.addEventListener('click', async (e) => {
         const productId = e.target.dataset.id;
         
         if (confirm(`Are you sure you want to delete product ID ${productId}?`)) {
-            alert(`Placeholder: Deleting product ${productId}... (Backend not yet implemented)`);
-            
-            // TODO:
-            // 1. Get user's auth token.
-            // 2. Call a new '/.netlify/functions/delete-product' endpoint with a POST/DELETE request.
-            // 3. Include auth token and product ID.
-            // 4. Refresh the product list on success.
+            const { data: { session }, error: sessionError } = await dbClient.auth.getSession();
+            if (sessionError || !session) {
+                alert('Authentication error. Please log in again.');
+                return;
+            }
+
+            const token = session.access_token;
+
+            try {
+                const response = await fetch('/.netlify/functions/delete-product', {
+                    method: 'POST', // Using POST for simplicity
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ product_id: productId }),
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || 'Failed to delete product.');
+                }
+                
+                alert(`Product ${productId} deleted successfully.`);
+                await fetchAndDisplayProducts(); // Refresh the list
+
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
         }
     }
 });
