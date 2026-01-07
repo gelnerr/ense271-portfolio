@@ -4,8 +4,8 @@
 // IMPORTANT: Replace these with your actual Supabase URL and Anon Key.
 // In a real-world production app, these should be stored in environment variables
 // and loaded securely, but for this admin panel, this is a simpler starting point.
-const SUPABASE_URL = 'YOUR_SUPABASE_URL'; 
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL = 'https://kwrteqlhcikruoqxdnwd.supabase.co/'; 
+const SUPABASE_ANON_KEY = 'sb_secret_KojZyUjjt4W-0rmoG2z-wg_QAzi-SBI';
 
 // --- ELEMENT SELECTORS ---
 const loginSection = document.getElementById('login-section');
